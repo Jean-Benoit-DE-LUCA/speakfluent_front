@@ -584,10 +584,6 @@ export default function Language({ params }: { params: {language: string} }) {
 
             if (!flag) {
 
-                /*const anchorElem = document.createElement("a");
-                anchorElem.setAttribute("class", "speak--language--users--element--ul--anchor");
-                anchorElem.setAttribute("href", "");*/
-
                 // create li element //
 
                 const liElem = document.createElement("li");
@@ -850,7 +846,7 @@ export default function Language({ params }: { params: {language: string} }) {
                 setTimeout(() => {
 
                     divOptionsUser.classList.remove("active");
-                }, 200);
+                }, 100);
 
                 // loop over childrens to remove each active //
 
@@ -919,7 +915,7 @@ export default function Language({ params }: { params: {language: string} }) {
 
                                 divOptionsUser.children[ind].classList.add("active");
                             }
-                        }, 200);
+                        }, 100);
 
                         setTimerFetch(false);
                     }
@@ -1003,10 +999,19 @@ export default function Language({ params }: { params: {language: string} }) {
             }
 
             console.log(divPrivateMessages);
+            console.log(privateChat);
 
             for (let ind = 0; ind < ((privateChat as any)[user_id_to_load]).length; ind++) {
 
-                createMessage(chatArea, (privateChat as any)[user_id_to_load][ind].firstname, (privateChat as any)[user_id_to_load][ind].message, (privateChat as any)[user_id_to_load][ind].date);
+                if ((privateChat as any)[user_id_to_load][ind].hasOwnProperty("link_chat_id")) {
+
+                    createLinkPrivateChat(chatArea, (privateChat as any)[user_id_to_load][ind]["language_id"], (privateChat as any)[user_id_to_load][ind]["link_chat_id"]);
+                }
+
+                else {
+
+                    createMessage(chatArea, (privateChat as any)[user_id_to_load][ind].firstname, (privateChat as any)[user_id_to_load][ind].message, (privateChat as any)[user_id_to_load][ind].date);
+                }
             }
         }
 
@@ -1133,12 +1138,60 @@ export default function Language({ params }: { params: {language: string} }) {
 
                         console.log(responseData);
 
-                        createLinkPrivateChat(chatArea, responseData.lastRowInserted[0]["id"]);
+                        createLinkPrivateChat(chatArea, Number(id), responseData.lastRowInserted[0]["id"]);
+
+
+
+                        // update private chat with anchor link //
+
+                        const clonePrivateChat = Object.assign({}, privateChat);
+
+                        const newObjLink : {
+                            link_chat_id: number,
+                            language_id: number
+                        } = {
+                            link_chat_id: 0,
+                            language_id: 0
+                        };
+
+                        newObjLink["link_chat_id"] = responseData.lastRowInserted[0]["id"];
+                        newObjLink["language_id"] = Number(id)
+
+                        // if messages already sent -> add message to array | if still no message sent -> create property + array of message //
+                        if (clonePrivateChat.hasOwnProperty(selectUser.value)) {
+
+                            (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                        }
+
+                        else {
+
+                            (clonePrivateChat as any)[selectUser.value] = [];
+                            (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                        }
+
+                        setPrivateChat(clonePrivateChat);
+
+                        //
+
+
+
+                        socket.send(JSON.stringify({
+                            private_link_object: {
+                                data: responseData.lastRowInserted[0],
+                                userSetFirstName: userContext.firstname,
+                                userReceiveFirstName: selectUser.options[selectUser.selectedIndex].text,
+                                idLanguage: id
+                            },
+                            clonePrivateChat: (clonePrivateChat as any)[selectUser.value]
+
+                        }));
 
                         chatArea.scrollTo({
                             top: chatArea.scrollHeight,
                             behavior: "smooth"
                         });
+
+                        selectUser.classList.remove("active");
                     }
                 }
             }
@@ -1170,21 +1223,20 @@ export default function Language({ params }: { params: {language: string} }) {
 
     // CREATE LINK PRIVATE CHAT //
 
-    const createLinkPrivateChat = (wrap: HTMLElement, idPrivateChat: number) => {
+    const createLinkPrivateChat = (wrap: HTMLElement, idLanguage: number, idPrivateChat: number) => {
 
         const divElement = document.createElement("div");
         divElement.setAttribute("class", "chat--message--wrap");
 
         const anchorElement = document.createElement("a");
         anchorElement.setAttribute("class", "link--private--chat");
-        anchorElement.setAttribute("href", `/chat?i=${id}&pv=${idPrivateChat}`);
+        anchorElement.setAttribute("href", `/chat?i=${idLanguage}&pv=${idPrivateChat}`);
         anchorElement.setAttribute("target", "_blank");
         anchorElement.textContent = `Private chat invitation #${idPrivateChat}`;
 
         divElement.append(anchorElement);
 
         wrap.append(divElement);
-
 
 
         // create listener //
@@ -1232,17 +1284,6 @@ export default function Language({ params }: { params: {language: string} }) {
     // ---------------------------------------------------------- //
 
 
-    // SET SLOGAN //
-
-    useEffect(() => {
-
-        setSloganFunc(params.language);
-    }, []);
-
-    // --------------------------- //
-
-
-
 
 
     // HANDLE CLICK VIDEO CALL //
@@ -1279,6 +1320,22 @@ export default function Language({ params }: { params: {language: string} }) {
     }
 
     // --------------------------- //
+
+
+
+
+
+
+    // SET SLOGAN //
+
+    useEffect(() => {
+
+        setSloganFunc(params.language);
+    }, []);
+
+    // --------------------------- //
+
+
 
 
     
@@ -1320,24 +1377,15 @@ export default function Language({ params }: { params: {language: string} }) {
                     "Content-type": "application/json"
                 }
             });
-
-            /*const responseData = await response.json();
-            console.log(responseData);*/
-
-            /*socket.send(JSON.stringify({
-                userConnect: {
-                    userFirstName: userContext.firstname,
-                    userId: userContext.id,
-                    languageId: id
-                }
-            }));*/
         };
 
         socket.onmessage = (e) => {
 
             let objData = JSON.parse(e.data);
 
-            //console.log(objData);
+            const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
+            const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
+
             if (objData.hasOwnProperty("message")) {
 
                 if (objData.message.language == params.language) {
@@ -1353,8 +1401,6 @@ export default function Language({ params }: { params: {language: string} }) {
                     // if private chat //
                     if (objData.message.hasOwnProperty("private_user")) {
 
-                        const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
-                        const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
 
                         if (objData.message.private_user == userContext.id) {
 
@@ -1404,12 +1450,6 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
-                                // select default value of select //
-
-                                //selectUser.value = objData.message.sending_user;
-
-
-
 
                                 // add data-user_id attribute to chat section //
 
@@ -1429,11 +1469,6 @@ export default function Language({ params }: { params: {language: string} }) {
                                 loadPrivateMessages(objData.message.sending_user);
                             }
 
-                            
-                            //loadPrivateMessages(objData.message.sending_user);
-
-
-
                             //---//
                         }
                     }
@@ -1441,16 +1476,81 @@ export default function Language({ params }: { params: {language: string} }) {
                     
                 }
             }
-            
-            /*if (objData.hasOwnProperty("userConnect")) {
 
-                newUserConnected(objData.userConnect.userFirstName, objData.userConnect.userId);
+
+            else if (objData.hasOwnProperty("private_link_object")) {
+
+                if (objData.private_link_object.data.user_receive == userContext.id) {
+
+
+                    // set new message link value in sending user property //
+
+                    const newUserObjArrayMessage = {};
+
+                    const newClonePrivateChat = Object.defineProperty(newUserObjArrayMessage, objData.private_link_object.data.user_id, {
+                        value: objData.clonePrivateChat,
+                        enumerable: true,
+                        writable: true
+                        }
+                    );
+
+                    setPrivateChat(Object.assign(privateChat, newClonePrivateChat));
+
+
+
+
+                    // if option element of user not exists -> add //
+
+                    let flag = false;
+
+                    for (let ind = 0; ind < selectUser.options.length; ind++) {
+
+                        if (selectUser.options[ind].value == objData.private_link_object.data.user_id) {
+
+                            flag = true;
+                            break;
+                        }
+                    }
+
+                    if (!flag) {
+
+                        const optionElem = document.createElement("option");
+                        optionElem.value = objData.private_link_object.data.user_id;
+                        optionElem.textContent = objData.private_link_object.userSetFirstName;
+
+                        selectUser.append(optionElem);
+
+
+
+
+                        // add data-user_id attribute to chat section //
+
+                        chatArea.setAttribute("data-user_id", objData.private_link_object.data.user_id);
+                    }
+
+                    //createLinkPrivateChat(chatArea, objData.private_link_object.data.idLanguage, objData.private_link_object.data.id);
+
+
+
+
+                    // if user has sending_user selected option -> empty all messages before update with new array of messages = live chat //
+
+                    if (selectUser.value == objData.private_link_object.data.user_id) {
+
+                        loadPrivateMessages(objData.private_link_object.data.user_id);
+                    }
+
+                    //---//
+
+                    console.log(objData);
+
+                    chatArea.scrollTo({
+                        top: chatArea.scrollHeight,
+                        behavior: "smooth"
+                    });
+                }
             }
-
-            else if (objData.hasOwnProperty("userDisconnect")) {
-
-                userDisconnect(objData.userDisconnect.userFirstName, objData.userDisconnect.userId)
-            }*/
+            
         };
 
         socket.onclose = async (e) => {
@@ -1461,12 +1561,6 @@ export default function Language({ params }: { params: {language: string} }) {
                     "Content-type": "application/json"
                 }
             })
-            /*socket.send(JSON.stringify({
-                userDisconnect: {
-                    userFirstName: userContext.firstname,
-                    userId: userContext.id
-                }
-            }));*/
         }
 
         socket.onerror = (e) => {

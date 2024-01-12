@@ -28,7 +28,7 @@ export default function Chat() {
         const localVideo = (document.getElementsByClassName("video--chat--local")[0] as HTMLVideoElement);
 
         console.log(e.currentTarget);
-        navigator.mediaDevices.getUserMedia({video: true})
+        navigator.mediaDevices.getUserMedia({video: true, audio: true})
         
         .then(stream => {
             setLocalStream(stream);

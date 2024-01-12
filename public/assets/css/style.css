@@ -404,8 +404,8 @@ body {
 
 .private--chat--element--wrap--element.private--chat.active .speak--language--chat--private--chat {
     opacity: 1;
-    transition-delay: .4s;
-    
+    transition-delay: .2s;
+
 }
 
 .speak--language--chat--private--chat::-webkit-scrollbar, .speak--language--chat::-webkit-scrollbar {
@@ -566,7 +566,7 @@ body {
     height: 0;
     width: 10rem;
     background-color: #d5d5d5;
-    transition: all 0.5s;
+    transition: all 0.2s;
 }
 
 .private--chat--element--div {
@@ -590,7 +590,7 @@ body {
 .private--chat--element--wrap--element.private--chat.active .speak--language--chat--text--wrap,
 .private--chat--element--wrap--element.private--chat.active .chat--message--wrap {
     opacity: 1;
-    transition-delay: .4s;
+    transition-delay: .2s;
 }
 
 .speak--language--users--element--wrap.active .speak--language--users--element--ul, .speak--language--users--element--wrap.active .speak--language--users--element--title, .private--chat--element--wrap--element.private--chat.active .speak--language--users--element--title, .private--chat--element--wrap--element.private--chat.active .private--chat--element--div--wrap, .private--chat--element--wrap--element.private--chat.active .speak--language--chat--text--wrap {
@@ -620,7 +620,7 @@ body {
     height: 0rem;
     visibility: hidden;
     background-color: var(--backgroundColorUserList);
-    transition: all .5s;
+    transition: all .2s;
     cursor: default;
     color: black;
 }
