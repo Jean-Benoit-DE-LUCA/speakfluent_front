@@ -1,95 +1,105 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+"use client";
+
+import Link from "next/link";
+import { useRouter } from 'next/navigation'
+import { useContext, useEffect, useState } from "react";
+import { ConfigContext } from "./layout";
 
 export default function Home() {
+
+  const router = useRouter();
+
+  const configContext = useContext(ConfigContext);
+
+  // FETCH LANGUAGES //
+
+  const [language, setLanguage] = useState({});
+
+  const fetchLanguage = async () => {
+
+    const response = await fetch(`${configContext.hostname}/api/home`, {
+      method: "GET",
+      headers: {
+        "Content-type": "application/json"
+      }
+    });
+
+    const responseData = await response.json();
+    
+    const newObj = {};
+
+    for (let ind = 0; ind < responseData.language.length; ind++) {
+
+      Object.defineProperty(newObj, responseData.language[ind].id, {
+        value: responseData.language[ind].name,
+        writable: true,
+        enumerable: true
+      });
+    }
+
+    setLanguage(newObj);
+  };
+
+  // CHANGE TEXT CONTENT BUTTON DEPENDING SELECT OPTION //
+
+  const handleChangeLanguage = (e: React.ChangeEvent<HTMLSelectElement>) => {
+
+    const buttonSubmit = (document.getElementsByClassName("select--language--button")[0] as HTMLButtonElement);
+
+    const selectLanguage = e.currentTarget;
+    
+    selectLanguage.value == "english" ? buttonSubmit.textContent = "Go!" : selectLanguage.value == "french" ? buttonSubmit.textContent = "Allez!" : selectLanguage.value == "german" ? buttonSubmit.textContent = "Gehen!" : selectLanguage.value == "italian" ? buttonSubmit.textContent = "Andare!" : selectLanguage.value == "arab" ? buttonSubmit.textContent = "اذهب!" : "";
+
+  };
+
+  // GET SELECTED LANGUAGE AND PASS IT ANCHOR //
+
+  const handleSubmitLanguage = (e: React.FormEvent) => {
+
+    e.preventDefault();
+
+    const selectLanguage = (document.getElementsByClassName("select--language")[0] as HTMLSelectElement);
+
+    router.push(`/speakin/${selectLanguage.value}?i=${selectLanguage.options[selectLanguage.selectedIndex].getAttribute("data-id")}`);
+  };
+
+  useEffect(() => {
+    
+    fetchLanguage();
+  }, []);
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <main className="main">
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+      <article className="main--article">
 
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
+        <span className="main--article--span--talk">Let's talk in:</span>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
+        <form name="select--language--form" className="select--language--form" method="POST">
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
+          <select name="select--language" className="select--language" onChange={handleChangeLanguage}>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+            {Object.keys(language).map( elem => 
+              <option value={(language as any)[elem]} key={elem} data-id={elem}>
+                {
+                  (language as any)[elem] == "english" ? "English" : 
+                  (language as any)[elem] == "french" ? "Français" :
+                  (language as any)[elem] == "italian" ? "Italiano" :
+                  (language as any)[elem] == "german" ? "Deutsch" :
+                  (language as any)[elem] == "arab" ? "عربي" : ""
+                }
+              </option>
+            )}
+
+          </select>
+
+
+          <button name="select--language--button" className="select--language--button" id="select--language--button" onClick={handleSubmitLanguage}>Go!</button>
+
+        </form>
+        
+      </article>
+
     </main>
   )
 }
