@@ -3,6 +3,7 @@
 import { useContext } from "react";
 import { useRouter } from 'next/navigation'
 import { ConfigContext, DataUserContext, UserContext } from "../layout";
+import Link from "next/link";
 
 export default function Login() {
 
@@ -12,7 +13,6 @@ export default function Login() {
     const userContext = useContext(UserContext);
     const dataUserContext = useContext(DataUserContext);
 
-    console.log(dataUserContext);
 
     const handleSubmitLogin = async (e: React.FormEvent) => {
 
@@ -84,9 +84,11 @@ export default function Login() {
                     errorElement.classList.add("active_success");
                     spanErrorElement.textContent = "You have successfully authenticated";
 
-                    console.log(responseData.user);
+
+                    sessionStorage.setItem("user", JSON.stringify(responseData.user));
 
                     dataUserContext.setUser(responseData.user);
+                    dataUserContext.isJwtOk = true;
         
                     setTimeout(() => {
                         errorElement.classList.remove("active_success");
@@ -132,10 +134,14 @@ export default function Login() {
 
                     <div className="main--article--register--form--field--wrap">
                         <label htmlFor="register--password" className="register--form--label">Password:</label>
-                        <input type="password" name="register--password" className="register--password" id="register--password" />
+                        <input type="password" name="register--password" className="register--password" id="register--password" autoComplete="off"/>
                     </div>
 
                     <button type="submit" name="register--submit--button" className="register--submit--button" id="register--submit--button">Submit</button>
+
+                    <div className="anchor--reset--password--wrap">
+                        <Link className="anchor--reset--password" href="/mail-password">Lost password?</Link>
+                    </div>
 
                 </form>
 

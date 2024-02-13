@@ -2,16 +2,24 @@
 
 import React, { useContext, useEffect, useState } from "react";
 import Image from "next/image";
-import { ConfigContext, SloganInterface, UserContext } from "../../layout";
+import { ConfigContext, DataUserContext, SloganInterface, SocketContext, UserContext } from "../../layout";
 
+import mail from "../../../../public/assets/pictures/mail.svg";
 import arrowDown from "../../../../public/assets/pictures/arrow-down.svg";
 import videoCall from "../../../../public/assets/pictures/video-call.svg";
+import undefinedImg from "../../../../public/assets/pictures/undefined-img.svg";
 
 import { redirect, useRouter, useSearchParams } from "next/navigation";
+import Loader from "../../../../components/Loader/page";
+
 
 export default function Language({ params }: { params: {language: string} }) {
 
-    const socket = new WebSocket("ws://localhost:8081");
+    const socketContext = useContext(SocketContext);
+
+    
+
+    // const socket = new WebSocket("ws://localhost:8081");
 
     const router = useRouter();
 
@@ -19,16 +27,22 @@ export default function Language({ params }: { params: {language: string} }) {
 
     const id = searchParams.get("i");
 
+    const dataUserContext = useContext(DataUserContext);
     const configContext = useContext(ConfigContext);
     const userContext = useContext(UserContext);
 
 
+    
 
     // USESTATE //
 
     const [timerFetch, setTimerFetch] = useState<boolean>(true);
+    const [mailBoxId, setMailBoxId] = useState<Array<number>>([]);
 
-    const [privateChat, setPrivateChat] = useState<object>({});
+    
+
+
+    //const [privateChat, setPrivateChat] = useState<object>({});
 
     // SET SLOGAN //
 
@@ -94,7 +108,64 @@ export default function Language({ params }: { params: {language: string} }) {
             
             setSlogan(newObj);
         }
+
+        else if (language == "spanish") {
+
+            const newObj = Object.assign({}, {
+                first: "¡Hablar en",
+                second: "castellano",
+                third: "con otras personas!"
+            });
+
+            setSlogan(newObj);
+        }
     };
+
+
+
+
+
+
+
+
+    // UPDATED ACTIVITY //
+
+    const updateActivityFunc = () => {
+
+        const dateTime = new Date();
+            
+            let month: number | string = (Number(dateTime.getMonth()) + 1);
+            if (Number(month) < 10) {
+                month = "0" + month;
+            }
+
+            let day: number | string = dateTime.getUTCDate();
+            if (Number(day) < 10) {
+                day = "0" + day;
+            }
+
+            let hours: number | string = dateTime.getHours();
+            if (Number(hours) < 10) {
+                hours = "0" + hours;
+            }
+
+            let minutes: number | string = dateTime.getMinutes();
+            if (Number(minutes) < 10) {
+                minutes = "0" + minutes;
+            }
+
+            let seconds: number | string = dateTime.getSeconds();
+            if (Number(seconds) < 10) {
+                seconds = "0" + seconds;
+            }
+            
+            const dateFormat = dateTime.getFullYear() + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
+
+            configContext.lastActivity = dateFormat;
+    };
+
+
+
 
 
 
@@ -104,7 +175,13 @@ export default function Language({ params }: { params: {language: string} }) {
 
     // SEND MESSAGE //
 
-    const handleSendMessage = (chat: string, e?: React.MouseEvent) => {
+    const handleSendMessage = async (chat: string, e?: React.MouseEvent) => {
+
+
+        const errorElement = (document.getElementsByClassName("error--element")[0] as HTMLElement);
+        const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
+
+        updateActivityFunc();
 
         if (chat == "general") {
 
@@ -116,7 +193,32 @@ export default function Language({ params }: { params: {language: string} }) {
 
             const dateTime = new Date();
             
-            const dateFormat = dateTime.getFullYear() + "-" + (Number(dateTime.getMonth()) + 1) + "-" + dateTime.getUTCDate() + " " + dateTime.getHours() + ":" + dateTime.getMinutes() + ":" + dateTime.getSeconds();
+            let month: number | string = (Number(dateTime.getMonth()) + 1);
+            if (Number(month) < 10) {
+                month = "0" + month;
+            }
+
+            let day: number | string = dateTime.getUTCDate();
+            if (Number(day) < 10) {
+                day = "0" + day;
+            }
+
+            let hours: number | string = dateTime.getHours();
+            if (Number(hours) < 10) {
+                hours = "0" + hours;
+            }
+
+            let minutes: number | string = dateTime.getMinutes();
+            if (Number(minutes) < 10) {
+                minutes = "0" + minutes;
+            }
+
+            let seconds: number | string = dateTime.getSeconds();
+            if (Number(seconds) < 10) {
+                seconds = "0" + seconds;
+            }
+            
+            const dateFormat = dateTime.getFullYear() + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
 
 
 
@@ -124,22 +226,40 @@ export default function Language({ params }: { params: {language: string} }) {
 
             if (messageText.value !== "" && messageText.value.trim().length !== 0) {
 
-                messageText.placeholder = "";
+                if (dataUserContext.isJwtOk) {
 
-                createMessage(chatArea, userContext.firstname, messageText.value, dateFormat);
+                    messageText.placeholder = "";
 
-                socket.send(JSON.stringify({
-                    message: {
-                        firstname: userContext.firstname,
-                        message: messageText.value,
-                        date: dateFormat,
-                        language: params.language
-                    }
-                }));
+                    createMessage(chatArea, userContext.firstname, messageText.value, dateFormat);
+
+                    socketContext.socket.send(JSON.stringify({
+                        message: {
+                            firstname: userContext.firstname,
+                            message: messageText.value,
+                            date: dateFormat,
+                            language: params.language
+                        }
+                    }));
 
 
-                messageText.value = "";
-                messageText.focus();
+                    messageText.value = "";
+                    messageText.focus();
+                }
+
+                else if (!dataUserContext.isJwtOk) {
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+            
+                    errorElement.classList.add("active");
+                    spanErrorElement.textContent = "Session has expired, please sign in again";
+            
+                    setTimeout(() => {
+                        errorElement.classList.remove("active");
+                    }, 2500);
+                }
             }
 
             else if (messageText.value.trim().length == 0) {
@@ -155,7 +275,6 @@ export default function Language({ params }: { params: {language: string} }) {
 
             // get select user value //
             const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
-            console.log(selectUser.value);
 
             // textarea 0 private //
             const messageText = (document.getElementsByClassName("speak--language--chat--text")[0] as HTMLTextAreaElement);
@@ -164,7 +283,32 @@ export default function Language({ params }: { params: {language: string} }) {
 
             const dateTime = new Date();
             
-            const dateFormat = dateTime.getFullYear() + "-" + (Number(dateTime.getMonth()) + 1) + "-" + dateTime.getUTCDate() + " " + dateTime.getHours() + ":" + dateTime.getMinutes() + ":" + dateTime.getSeconds();
+            let month: number | string = (Number(dateTime.getMonth()) + 1);
+            if (Number(month) < 10) {
+                month = "0" + month;
+            }
+
+            let day: number | string = dateTime.getUTCDate();
+            if (Number(day) < 10) {
+                day = "0" + day;
+            }
+
+            let hours: number | string = dateTime.getHours();
+            if (Number(hours) < 10) {
+                hours = "0" + hours;
+            }
+
+            let minutes: number | string = dateTime.getMinutes();
+            if (Number(minutes) < 10) {
+                minutes = "0" + minutes;
+            }
+
+            let seconds: number | string = dateTime.getSeconds();
+            if (Number(seconds) < 10) {
+                seconds = "0" + seconds;
+            }
+            
+            const dateFormat = dateTime.getFullYear() + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
 
 
 
@@ -172,91 +316,107 @@ export default function Language({ params }: { params: {language: string} }) {
 
             if (messageText.value !== "" && messageText.value.trim().length !== 0) {
 
-                messageText.placeholder = "";
+                if (dataUserContext.isJwtOk) {
 
-                
+                    messageText.placeholder = "";
 
-                // add message to object state to distinct differents users conversations //
+                    // add message to object state to distinct differents users conversations //
 
-                const clonePrivateChat = Object.assign({}, privateChat);
+                    const clonePrivateChat = Object.assign({}, dataUserContext.privateChat);
 
-                const newObjMessage: {
-                    firstname: string,
-                    message: string,
-                    date: string,
-                    language: string,
-                    sending_user: string,
-                    private_user: string
-                } = {
-                    firstname: "",
-                    message: "",
-                    date: "",
-                    language: "",
-                    sending_user: "",
-                    private_user: ""
-                };
+                    const newObjMessage: {
+                        firstname: string,
+                        message: string,
+                        date: string,
+                        language: string,
+                        sending_user: string,
+                        private_user: string
+                    } = {
+                        firstname: "",
+                        message: "",
+                        date: "",
+                        language: "",
+                        sending_user: "",
+                        private_user: ""
+                    };
 
-                newObjMessage["firstname"] = userContext.firstname;
-                newObjMessage["message"] = messageText.value;
-                newObjMessage["date"] = dateFormat;
-                newObjMessage["language"] = params.language;
-                (newObjMessage["sending_user"] as string|null) = (userContext.id as any).toString();
-                newObjMessage["private_user"] = selectUser.value;
-
-
+                    newObjMessage["firstname"] = userContext.firstname;
+                    newObjMessage["message"] = messageText.value;
+                    newObjMessage["date"] = dateFormat;
+                    newObjMessage["language"] = params.language;
+                    (newObjMessage["sending_user"] as string|null) = (userContext.id as any).toString();
+                    newObjMessage["private_user"] = selectUser.value;
 
 
 
 
 
-                // if messages already sent -> add message to array | if still no message sent -> create property + array of message //
-                if (clonePrivateChat.hasOwnProperty(selectUser.value)) {
 
-                    (clonePrivateChat as any)[selectUser.value].push(newObjMessage);
+
+                    // if messages already sent -> add message to array | if still no message sent -> create property + array of message //
+                    if (clonePrivateChat.hasOwnProperty(selectUser.value)) {
+
+                        (clonePrivateChat as any)[selectUser.value].push(newObjMessage);
+                    }
+
+                    else {
+
+                        (clonePrivateChat as any)[selectUser.value] = [];
+                        (clonePrivateChat as any)[selectUser.value].push(newObjMessage);
+                    }
+
+                    //setPrivateChat(clonePrivateChat);
+                    dataUserContext.privateChat = Object.assign({}, clonePrivateChat);
+
+                    setCountChat(countChat + 1);
+
+
+
+
+                    // create message + send privateChat object to socketContext.socket //
+
+                    createMessage(chatArea, userContext.firstname, messageText.value, dateFormat);
+
+                    socketContext.socket.send(JSON.stringify({
+                        message: {
+                            firstname: userContext.firstname,
+                            message: messageText.value,
+                            date: dateFormat,
+                            language: params.language,
+
+                            // add private_user property if private message //
+                            sending_user: (userContext.id as any).toString(),
+                            private_user: selectUser.value
+                        },
+                        clonePrivateChat: (clonePrivateChat as any)[selectUser.value]
+                    }));
+
+
+
+
+
+
+
+                    //
+
+                    messageText.value = "";
+                    messageText.focus();
                 }
 
-                else {
+                else if (!dataUserContext.isJwtOk) {
 
-                    (clonePrivateChat as any)[selectUser.value] = [];
-                    (clonePrivateChat as any)[selectUser.value].push(newObjMessage);
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+            
+                    errorElement.classList.add("active");
+                    spanErrorElement.textContent = "Session has expired, please sign in again";
+            
+                    setTimeout(() => {
+                        errorElement.classList.remove("active");
+                    }, 2500);
                 }
-
-                setPrivateChat(clonePrivateChat);
-
-
-
-
-
-
-
-                // create message + send privateChat object to socket //
-
-                createMessage(chatArea, userContext.firstname, messageText.value, dateFormat);
-
-                socket.send(JSON.stringify({
-                    message: {
-                        firstname: userContext.firstname,
-                        message: messageText.value,
-                        date: dateFormat,
-                        language: params.language,
-
-                        // add private_user property if private message //
-                        sending_user: (userContext.id as any).toString(),
-                        private_user: selectUser.value
-                    },
-                    clonePrivateChat: (clonePrivateChat as any)[selectUser.value]
-                }));
-
-
-
-
-
-
-
-                //
-
-                messageText.value = "";
-                messageText.focus();
             }
 
             else if (messageText.value.trim().length == 0) {
@@ -335,6 +495,8 @@ export default function Language({ params }: { params: {language: string} }) {
 
             for (let ind = 0; ind < divOptions.length; ind++) {
 
+                divOptions[ind].parentElement?.getElementsByClassName("speak--language--users--element--ul--li--span--firstname--list")[0].classList.remove("active");
+
                 divOptions[ind].classList.remove("active");
             }
         }
@@ -365,6 +527,7 @@ export default function Language({ params }: { params: {language: string} }) {
     // ONCLICK USERS ONLINE //
 
     const handleClickUsers = (e: React.MouseEvent) => {
+
 
         if ((e.target as any).className == "speak--language--users" || 
             (e.target as any).className == "speak--language--users--span" ||
@@ -405,15 +568,42 @@ export default function Language({ params }: { params: {language: string} }) {
             (e.target as any).className == "private--chat--element--span private--chat" ||
             (e.target as any).className == "arrow speak--language private--chat") {
 
-            const privateChatElement = (document.getElementsByClassName("private--chat--element--wrap--element private--chat")[0] as HTMLElement);
 
+
+
+            const privateChatElement = (document.getElementsByClassName("private--chat--element--wrap--element private--chat")[0] as HTMLElement);
             privateChatElement.classList.toggle("active");
+
+            if (privateChatElement.classList.contains("active")) {
+
+                const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
+
+                if (mailBoxId.includes(Number(selectUser.value))) {
+
+                    let copyMailBoxId = mailBoxId.slice();
+        
+                    let result = copyMailBoxId.filter( elem => elem !== Number(selectUser.value));
+        
+                    setMailBoxId(result);
+                    setCountMail(countMail + 1);
+                }
+
+            }
+
+
+
+
+
 
 
 
             const userBoxElement = (document.getElementsByClassName("speak--language--users--element--wrap")[0] as HTMLElement);
-
             userBoxElement.classList.remove("active");
+
+
+
+            const mailImgElement = (document.getElementsByClassName("private--chat--element--mail--img")[0] as HTMLImageElement);
+            mailImgElement.classList.remove("active");
 
 
             // remove online users element active if contains //
@@ -434,23 +624,20 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
-
-
     // CLICK PRIVATE CHAT DIV USER //
 
-    const handleClickPrivateChatUser = (user_id: string, user_firstname: string) => {
+    const handleClickPrivateChatUser = (e: any, user_id: string, user_firstname: string) => {
 
-        console.log(user_id + " " + user_firstname);
-
-        
 
         // remove active online users div + remove active options + set timer fetch ON //
 
         const userBoxElement = (document.getElementsByClassName("speak--language--users--element--wrap")[0] as HTMLElement);
 
+        removeEachActiveOptionsUser();
+
         userBoxElement.classList.remove("active");
 
-        removeEachActiveOptionsUser();
+        
 
         setTimerFetch(true);
 
@@ -460,10 +647,10 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
-
         // add new chat user to select private chat //
 
         const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
+
 
         const optionElem = document.createElement("option");
         optionElem.setAttribute("value", user_id);
@@ -497,6 +684,9 @@ export default function Language({ params }: { params: {language: string} }) {
 
             selectUser.value = selectValue;
 
+            let evt = new Event("change", {"bubbles": true});
+            selectUser.dispatchEvent(evt);
+
             loadPrivateMessages(selectValue);
         }
 
@@ -509,9 +699,6 @@ export default function Language({ params }: { params: {language: string} }) {
             loadPrivateMessages(user_id);
         }
 
-        
-
-        
     };
 
 
@@ -523,14 +710,123 @@ export default function Language({ params }: { params: {language: string} }) {
 
     const handleChangeSelectPrivateUser = (e: React.ChangeEvent<HTMLSelectElement>) => {
 
-        const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
 
+        const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
         chatArea.setAttribute("data-user_id", e.currentTarget.value);
+
+        if (mailBoxId.includes(Number(e.currentTarget.value))) {
+
+            let copyMailBoxId = mailBoxId.slice();
+
+            let result = copyMailBoxId.filter( elem => elem !== Number(e.currentTarget.value));
+
+            setMailBoxId(result);
+            setCountMail(countMail + 1);
+        }
 
         loadPrivateMessages(e.currentTarget.value);
     }
 
 
+
+
+
+    const [countMail, setCountMail] = useState<number>(0);
+
+    useEffect(() => {
+
+        const mailImgElement = (document.getElementsByClassName("private--chat--element--mail--img")[0] as HTMLImageElement);
+
+        const privateChatElement = (document.getElementsByClassName("private--chat--element--wrap--element private--chat")[0] as HTMLElement);
+
+        const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
+
+
+        let intervalMail = setInterval(() => {
+
+            if (mailImgElement !== undefined) {
+
+                if (mailBoxId.length == 0) {
+                    mailImgElement.classList.remove("active");
+                }
+
+                else if (mailBoxId.length > 0) {
+
+                    mailImgElement.classList.add("active");
+                }
+            }
+
+        }, 150);
+
+        return () => clearInterval(intervalMail);
+
+    }, [countMail]);
+
+
+
+
+
+
+
+
+
+    // REINSERT USER LANGUAGE CONNECTED IF ACTIVITY //
+
+    const insertUserLanguageConnectedIfReconnect = async (arrayOnlineUsers: Array<any>) => {
+
+        const currentDateTime = (new Date()).getTime();
+
+        const currentDateTimeLastActivity = new Date(configContext.lastActivity);
+
+        let idUserStore = null;
+
+        if (sessionStorage.getItem("user") !== null) {
+
+            idUserStore = JSON.parse(sessionStorage.getItem("user") as string)['id'];
+        }
+
+        // check if array online users not empty //
+
+        let flag = false;
+
+        for (let ind = 0; ind < arrayOnlineUsers.length; ind++) {
+
+            if (arrayOnlineUsers[ind].user_id == userContext.id || arrayOnlineUsers[ind].user_id == idUserStore) {
+
+                flag = true;
+                break;
+            }
+        }
+
+
+
+
+        // if not flag -> user not in database user language connected -> insert if activity //
+
+        if (!flag) {
+
+            if (currentDateTime - currentDateTimeLastActivity.getTime() <= 900000) {
+
+                // INSERT USER_LANGUAGE_CONNECTED //
+
+                if (userContext.id == null) {
+
+                    if (idUserStore !== null) {
+
+                        userContext.id = idUserStore;
+                    }
+                }
+
+                const response = await fetch(`${configContext.hostname}/api/user/${userContext.id}/language/${id}/connected`, {
+                    method: "POST",
+                    headers: {
+                        "Content-type": "application/json"
+                    }
+                });
+            }
+        }
+        
+    };
 
 
 
@@ -540,24 +836,43 @@ export default function Language({ params }: { params: {language: string} }) {
 
     const fetchUsersConnectedByLanguage = async (language_id: string) => {
 
-        const response = await fetch(`${configContext.hostname}/api/language/${language_id}/getusers`, {
-            method: "GET",
-            headers: {
-                "Content-type": "application/json"
+
+        try {
+            const response = await fetch(`${configContext.hostname}/api/language/${language_id}/getusers`, {
+                method: "GET",
+                headers: {
+                    "Content-type": "application/json"
+                }
+            });
+
+            const responseData = await response.json();
+
+            insertUserLanguageConnectedIfReconnect(responseData.usersOnline);
+
+
+
+            try {
+                manageUsersConnectedToList(responseData.usersOnline);
             }
-        });
 
-        const responseData = await response.json();
+            catch (e) {
+                
+            }
+        }
 
+        catch (e) {
 
-        manageUsersConnectedToList(responseData.usersOnline);
+        }
     
     };
 
     const manageUsersConnectedToList = (usersOnline: Array<any>) => {
 
+
         const ulElemList = (document.getElementsByClassName("speak--language--users--element--ul")[0] as HTMLUListElement);
+
         const liElems = ulElemList.getElementsByClassName("speak--language--users--element--ul--li");
+
 
         for (let ind = 0; ind < liElems.length; ind++) {
 
@@ -588,12 +903,19 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 const liElem = document.createElement("li");
                 liElem.setAttribute("class", "speak--language--users--element--ul--li");
-                liElem.textContent = usersOnline[ind].firstname;
                 liElem.setAttribute("data-id", usersOnline[ind].user_id);
 
 
 
-                // create div options element //
+                // 1- create span element firstname //
+
+                const spanFirstNameList = document.createElement("span");
+                spanFirstNameList.setAttribute("class", "speak--language--users--element--ul--li--span--firstname--list")
+                spanFirstNameList.textContent = usersOnline[ind].firstname;
+
+
+
+                // 2- create div options element //
 
                 const divElem = document.createElement("div");
                 divElem.setAttribute("class", "speak--language--users--element--ul--li--div--options");
@@ -601,6 +923,20 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
                 // create div options content elements //
+
+                // picture //
+
+                const divWrapPhoto = document.createElement("div");
+                divWrapPhoto.setAttribute("class", "speak--language--users--element--ul--li--div--options--div--wrap");
+
+                const anchorElementImg = document.createElement("a");
+                anchorElementImg.setAttribute("class", "speak--language--users--element--ul--li--div--options--anchor--img");
+                anchorElementImg.setAttribute("href", "../../assets/pictures/undefined-img.svg");
+                anchorElementImg.setAttribute("target", "_blank");
+
+                const imgElement = document.createElement("img");
+                imgElement.setAttribute("class", "speak--language--users--element--ul--li--div--options--img--profile");
+                imgElement.setAttribute("src", "../../assets/pictures/undefined-img.svg");
 
                 // age //
 
@@ -657,9 +993,13 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 // add listener to button private chat //
 
-                buttonPrivateChat.addEventListener("click", () => handleClickPrivateChatUser(usersOnline[ind].user_id, usersOnline[ind].firstname));
+                buttonPrivateChat.addEventListener("click", (e) => handleClickPrivateChatUser(e, usersOnline[ind].user_id, usersOnline[ind].firstname));
 
                 //
+
+                anchorElementImg.append(imgElement);
+
+                divWrapPhoto.append(anchorElementImg);
 
                 divWrapAge.append(spanLabelAge);
                 divWrapAge.append(spanAge);
@@ -673,12 +1013,22 @@ export default function Language({ params }: { params: {language: string} }) {
                 buttonPrivateChat.append(spanHover)
                 divWrapPrivateChat.append(buttonPrivateChat);
 
+                divElem.append(divWrapPhoto);
                 divElem.append(divWrapAge);
                 divElem.append(divWrapGender);
                 divElem.append(divWrapCity);
 
+                if (userContext.id == null) {
+
+                    if (sessionStorage.getItem("user") !== null) {
+
+                        userContext.id = JSON.parse(sessionStorage.getItem("user") as string)['id'];
+                    }
+                }
+
                 userContext.id !== usersOnline[ind].user_id ? divElem.append(divWrapPrivateChat) : "";
 
+                liElem.append(spanFirstNameList);
                 liElem.append(divElem);
                 ulElemList.append(liElem);
             }
@@ -798,6 +1148,16 @@ export default function Language({ params }: { params: {language: string} }) {
 
     const fetchUserDataById = async (user_id: string) => {
 
+        if (userContext.jwt.length == 0) {
+
+            if (sessionStorage.getItem("user") !== null) {
+
+                userContext.jwt = JSON.parse(sessionStorage.getItem("user") as string)['jwt'];
+            }
+        }
+
+
+
         const response = await fetch(`${configContext.hostname}/api/user/find/id/${user_id}`, {
                 method: "GET",
                 headers: {
@@ -816,10 +1176,24 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
+
+
     const handleClickUniqueUser = async (e: any) => {
 
-        if (e.target.className == "speak--language--users--element--ul--li") {
 
+        const liUsersList = (document.getElementsByClassName("speak--language--users--element--ul--li") as HTMLCollectionOf<HTMLLIElement>);
+
+        for (let ind = 0; ind < liUsersList.length; ind++) {
+
+            liUsersList[ind].classList.remove("active");
+        }
+
+
+        if (e.currentTarget.className == "speak--language--users--element--ul--li") {
+
+            e.currentTarget.classList.add("active");
+
+            const spanFirstNameList = (e.currentTarget.getElementsByClassName("speak--language--users--element--ul--li--span--firstname--list")[0] as HTMLSpanElement);
 
             const divOptions = (document.getElementsByClassName("speak--language--users--element--ul--li--div--options") as HTMLCollectionOf<HTMLDivElement>);
 
@@ -834,7 +1208,19 @@ export default function Language({ params }: { params: {language: string} }) {
 
                     divOptions[ind].classList.remove("active");
                 }
+
+
+
+
+                // loop over childrens to remove each active //
+
+                for (let ind2 = 0; ind2 < divOptions[ind].children.length; ind2++) {
+
+                    divOptions[ind].children[ind2].classList.remove("active");
+                }
             }
+
+
 
 
 
@@ -845,6 +1231,7 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 setTimeout(() => {
 
+                    spanFirstNameList.classList.remove("active");
                     divOptionsUser.classList.remove("active");
                 }, 100);
 
@@ -866,7 +1253,7 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 // get data from user //
 
-                const resultFetch = await fetchUserDataById(e.target.getAttribute("data-id"));
+                const resultFetch = await fetchUserDataById(e.currentTarget.getAttribute("data-id"));
 
                 if (resultFetch.hasOwnProperty("jwtCheck")) {
 
@@ -896,15 +1283,23 @@ export default function Language({ params }: { params: {language: string} }) {
 
                     else {
 
-                        // dynamic age + gender + city user //
+                        // dynamic photo + age + gender + city user //
 
-                        divOptionsUser.children[0].children[1].textContent = resultFetch['userObj']['age'];
-                        divOptionsUser.children[1].children[1].textContent = resultFetch['userObj']['gender'];
-                        divOptionsUser.children[2].children[1].textContent = resultFetch['userObj']['city'];
+
+                        if (resultFetch['userObj']['photo'] !== null) {
+
+                            (divOptionsUser.children[0].children[0] as HTMLAnchorElement).href = `${configContext.hostname}/assets/pictures/${resultFetch['userObj']['photo']}`;
+
+                            (divOptionsUser.children[0].children[0].children[0] as HTMLImageElement).src = `${configContext.hostname}/assets/pictures/${resultFetch['userObj']['photo']}`;
+                        }
+
+                        divOptionsUser.children[1].children[1].textContent = resultFetch['userObj']['age'];
+                        divOptionsUser.children[2].children[1].textContent = resultFetch['userObj']['gender'];
+                        divOptionsUser.children[3].children[1].textContent = resultFetch['userObj']['city'];
 
                         //
 
-
+                        spanFirstNameList.classList.add("active");
                         divOptionsUser.classList.add("active");
 
                         setTimeout(() => {
@@ -947,24 +1342,27 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
+    const [pvChat, setPvChat] = useState<any>({});
+    const [countChat, setCountChat] = useState<number>(0);
 
+    useEffect(() => {
+
+        setPvChat(Object.assign(pvChat, dataUserContext.privateChat));
+    }, [countChat]);
 
     // LOAD PRIVATE MESSAGES //
 
     const loadPrivateMessages = (user_id_to_load: string) => {
+
+
 
         const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
         const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
 
         const divMessages = (document.getElementsByClassName("chat--message--wrap") as HTMLCollectionOf<HTMLDivElement>);
 
-        console.log(user_id_to_load);
-        console.log(privateChat);
-
 
         const divPrivateMessages = (chatArea.getElementsByClassName("chat--message--wrap") as HTMLCollectionOf<HTMLDivElement>);
-
-        console.log(divPrivateMessages);
 
         
         // while there is childs messages -> remove //
@@ -987,7 +1385,7 @@ export default function Language({ params }: { params: {language: string} }) {
         // if key "-" exists (user speak to himself) load messages //
 
 
-        if (((privateChat as any)[user_id_to_load]) !== undefined) {
+        if (((pvChat as any)[user_id_to_load]) !== undefined) {
 
 
             while (divPrivateMessages.length > 0) {
@@ -998,24 +1396,28 @@ export default function Language({ params }: { params: {language: string} }) {
                 }
             }
 
-            console.log(divPrivateMessages);
-            console.log(privateChat);
 
-            for (let ind = 0; ind < ((privateChat as any)[user_id_to_load]).length; ind++) {
 
-                if ((privateChat as any)[user_id_to_load][ind].hasOwnProperty("link_chat_id")) {
+            for (let ind = 0; ind < ((pvChat as any)[user_id_to_load]).length; ind++) {
 
-                    createLinkPrivateChat(chatArea, (privateChat as any)[user_id_to_load][ind]["language_id"], (privateChat as any)[user_id_to_load][ind]["link_chat_id"]);
+                if ((pvChat as any)[user_id_to_load][ind].hasOwnProperty("link_chat_id")) {
+
+                    createLinkPrivateChat(chatArea, (pvChat as any)[user_id_to_load][ind]["language_id"], (pvChat as any)[user_id_to_load][ind]["link_chat_id"], (pvChat as any)[user_id_to_load][ind]["user_id"], (pvChat as any)[user_id_to_load][ind]["user_receive"]);
+
+                    chatArea.scrollTo({
+                        top: chatArea.scrollHeight,
+                        behavior: "smooth"
+                    });
                 }
 
                 else {
 
-                    createMessage(chatArea, (privateChat as any)[user_id_to_load][ind].firstname, (privateChat as any)[user_id_to_load][ind].message, (privateChat as any)[user_id_to_load][ind].date);
+                    createMessage(chatArea, (pvChat as any)[user_id_to_load][ind].firstname, (pvChat as any)[user_id_to_load][ind].message, (pvChat as any)[user_id_to_load][ind].date);
                 }
             }
         }
 
-        else if (((privateChat as any)[user_id_to_load]) == undefined) {
+        else if (((pvChat as any)[user_id_to_load]) == undefined) {
 
 
             while (divPrivateMessages.length > 0) {
@@ -1027,8 +1429,6 @@ export default function Language({ params }: { params: {language: string} }) {
             }
 
 
-
-            console.log(divPrivateMessages);
         }
     }
 
@@ -1045,70 +1445,252 @@ export default function Language({ params }: { params: {language: string} }) {
         const errorElement = (document.getElementsByClassName("error--element")[0] as HTMLElement);
         const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
 
-        const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
-
         const videoCallBoxPrivate = (document.getElementsByClassName("video--call--button--box private--chat")[0] as HTMLDivElement);
 
-        const inputValuesPassword = (document.getElementsByClassName("video--call--button--form--input") as HTMLCollectionOf<HTMLInputElement>);
+        const labelTitlePassword = (document.getElementsByClassName("video--call--button--form--label")[0] as HTMLLabelElement);
 
-        let flag = false;
-        let passwordInputs = "";
 
-        for (let ind = 0; ind < inputValuesPassword.length; ind++) {
+        // check if user SET or ENTER password //
 
-            if (inputValuesPassword[ind].value == "" ||
-                inputValuesPassword[ind].value == " ") {
+        if (videoCallBoxPrivate.getAttribute("data-password") !== "enter") {
 
-                flag = true;
-                break;
+
+
+            const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
+
+            const inputValuesPassword = (document.getElementsByClassName("video--call--button--form--input") as HTMLCollectionOf<HTMLInputElement>);
+
+            let flag = false;
+            let passwordInputs = "";
+
+            for (let ind = 0; ind < inputValuesPassword.length; ind++) {
+
+                if (inputValuesPassword[ind].value == "" ||
+                    inputValuesPassword[ind].value == " ") {
+
+                    flag = true;
+                    break;
+                }
+
+                else {
+
+                    passwordInputs += inputValuesPassword[ind].value;
+                }
             }
 
-            else {
+            if (flag) {
 
-                passwordInputs += inputValuesPassword[ind].value;
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth"
+                });
+
+                errorElement.classList.add("active");
+                spanErrorElement.textContent = "Empty fields are not allowed";
+
+                setTimeout(() => {
+                    errorElement.classList.remove("active");
+                }, 2500);
             }
-        }
 
-        if (flag) {
+            else if (!flag) {
 
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
+                if (selectUser.value == "-") {
 
-            errorElement.classList.add("active");
-            spanErrorElement.textContent = "Empty fields are not allowed";
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+        
+                    errorElement.classList.add("active");
+                    spanErrorElement.textContent = "Please choose an user in your private list";
+        
+                    setTimeout(() => {
+                        errorElement.classList.remove("active");
+                    }, 2500);
 
-            setTimeout(() => {
-                errorElement.classList.remove("active");
-            }, 2500);
-        }
+                    videoCallBoxPrivate.classList.remove("active");
+                    selectUser.classList.remove("active");
+                }
 
-        else if (!flag) {
+                else if (passwordInputs.length == 4) {
 
-            if (passwordInputs.length == 4) {
-
-                const response = await fetch (`${configContext.hostname}/api/userchatpassword/insert`, {
-                    method: "POST",
-                    headers: {
-                        "Content-type": "application/json",
-                        "Authorization": `Bearer ${userContext.jwt}`
-                    },
-                    body: JSON.stringify({
-                        passwordInputs: passwordInputs,
-                        userSet: userContext.id,
-                        userReceive: Number(selectUser.value),
-                        languageId: Number(id)
+                    const response = await fetch (`${configContext.hostname}/api/userchatpassword/insert`, {
+                        method: "POST",
+                        headers: {
+                            "Content-type": "application/json",
+                            "Authorization": `Bearer ${userContext.jwt}`
+                        },
+                        body: JSON.stringify({
+                            passwordInputs: passwordInputs,
+                            userSet: userContext.id,
+                            userReceive: Number(selectUser.value),
+                            languageId: Number(id),
+                            chatType: "private"
+                        })
                     })
-                })
 
-                const responseData = await response.json();
-                console.log(responseData);
+                    const responseData = await response.json();
 
-                if (responseData.hasOwnProperty("jwtCheck")) {
 
+                    if (responseData.hasOwnProperty("jwtCheck")) {
+
+                        
+
+
+                        // if token expired //
+
+                        if (responseData.jwtCheck == false) {
+
+                            window.scrollTo({
+                                top: 0,
+                                behavior: "smooth"
+                            });
+                
+                            errorElement.classList.add("active");
+                            spanErrorElement.textContent = "Session has expired, please sign in again";
+                
+                            setTimeout(() => {
+                                errorElement.classList.remove("active");
+                            }, 2500);
+                        }
+
+
+                        // else -> token ok //
+
+                        else {
+
+                            videoCallBoxPrivate.classList.remove("active");
+
+                            const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
+
+
+                            createLinkPrivateChat(chatArea, Number(id), responseData.lastRowInserted[0]["id"], responseData.lastRowInserted[0]["user_id"], responseData.lastRowInserted[0]["user_receive"]);
+
+
+
+                            // update private chat with anchor link //
+
+                            const clonePrivateChat = Object.assign({}, dataUserContext.privateChat);
+
+                            const newObjLink : {
+                                link_chat_id: number,
+                                language_id: number,
+                                user_id: number,
+                                user_receive: number
+                            } = {
+                                link_chat_id: 0,
+                                language_id: 0,
+                                user_id: 0,
+                                user_receive: 0
+                            };
+
+                            newObjLink["link_chat_id"] = responseData.lastRowInserted[0]["id"];
+                            newObjLink["language_id"] = Number(id);
+                            newObjLink["user_id"] = responseData.lastRowInserted[0]["user_id"];
+                            newObjLink["user_receive"] = responseData.lastRowInserted[0]["user_receive"];
+
+                            // if messages already sent -> add message to array | if still no message sent -> create property + array of message //
+                            if (clonePrivateChat.hasOwnProperty(selectUser.value)) {
+
+                                (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                            }
+
+                            else {
+
+                                (clonePrivateChat as any)[selectUser.value] = [];
+                                (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                            }
+
+                            //setPrivateChat(clonePrivateChat);
+
+                            dataUserContext.privateChat = Object.assign({}, clonePrivateChat);
+
+                            setCountChat(countChat + 1);
+
+                            //
+
+
+
+                            socketContext.socket.send(JSON.stringify({
+                                private_link_object: {
+                                    data: responseData.lastRowInserted[0],
+                                    userSetFirstName: userContext.firstname,
+                                    userReceiveFirstName: selectUser.options[selectUser.selectedIndex].text,
+                                    idLanguage: id
+                                },
+                                clonePrivateChat: (clonePrivateChat as any)[selectUser.value]
+
+                            }));
+
+                            chatArea.scrollTo({
+                                top: chatArea.scrollHeight,
+                                behavior: "smooth"
+                            });
+
+                            selectUser.classList.remove("active");
+                        }
+                    }
+                }
+            }
+        }
+
+
+        else if (videoCallBoxPrivate.getAttribute("data-password") == "enter") {
+
+            const inputValuesPassword = (document.getElementsByClassName("video--call--button--form--input") as HTMLCollectionOf<HTMLInputElement>);
+
+            let flag = false;
+            let passwordInputs = "";
+
+            for (let ind = 0; ind < inputValuesPassword.length; ind++) {
+
+                if (inputValuesPassword[ind].value == "" ||
+                    inputValuesPassword[ind].value == " ") {
+
+                    flag = true;
+                    break;
+                }
+
+                else {
+
+                    passwordInputs += inputValuesPassword[ind].value;
+                }
+            }
+
+            if (flag) {
+
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth"
+                });
+
+                errorElement.classList.add("active");
+                spanErrorElement.textContent = "Empty fields are not allowed";
+
+                setTimeout(() => {
+                    errorElement.classList.remove("active");
+                }, 2500);
+            }
+
+            else if (!flag) {
+
+                if (passwordInputs.length == 4) {
+
+                    const response = await fetch(`${configContext.hostname}/api/userchatpassword/check`, {
+                        method: "POST",
+                        headers: {
+                            "Content-type": "application/json",
+                            "Authorization": `Bearer ${userContext.jwt}`
+                        },
+                        body: JSON.stringify({
+                            passwordInputs: passwordInputs,
+                            pvChatId: videoCallBoxPrivate.getAttribute("data-id-pv-chat")
+                        })
+                    });
+
+                    const responseData = await response.json();
                     
-
 
                     // if token expired //
 
@@ -1132,67 +1714,48 @@ export default function Language({ params }: { params: {language: string} }) {
 
                     else {
 
-                        videoCallBoxPrivate.classList.remove("active");
+                        if (responseData.resultCheckChatPassword) {
 
-                        const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
+                            videoCallBoxPrivate.classList.remove("active");
 
-                        console.log(responseData);
+                            setTimeout(() => {
 
-                        createLinkPrivateChat(chatArea, Number(id), responseData.lastRowInserted[0]["id"]);
+                                labelTitlePassword.textContent = "Set a private chat password:";
+                            }, 300);
 
 
 
-                        // update private chat with anchor link //
+                            // open in new tab + set sessionStorage //
 
-                        const clonePrivateChat = Object.assign({}, privateChat);
+                            sessionStorage.setItem("user", JSON.stringify(userContext));
 
-                        const newObjLink : {
-                            link_chat_id: number,
-                            language_id: number
-                        } = {
-                            link_chat_id: 0,
-                            language_id: 0
-                        };
+                            setTimeout(() => {
 
-                        newObjLink["link_chat_id"] = responseData.lastRowInserted[0]["id"];
-                        newObjLink["language_id"] = Number(id)
+                                window.open(`/chat?i=${id}&pv=${responseData.data[0]["user_chat_password_id"]}&us1=${responseData.data[0]["user_chat_password_user_id"]}&us2=${responseData.data[0]["user_chat_password_user_receive"]}`, "_blank");
 
-                        // if messages already sent -> add message to array | if still no message sent -> create property + array of message //
-                        if (clonePrivateChat.hasOwnProperty(selectUser.value)) {
-
-                            (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                            }, 300);
+                            
                         }
 
-                        else {
+                        else if (!responseData.resultCheckChatPassword) {
 
-                            (clonePrivateChat as any)[selectUser.value] = [];
-                            (clonePrivateChat as any)[selectUser.value].push(newObjLink);
+                            window.scrollTo({
+                                top: 0,
+                                behavior: "smooth"
+                            });
+                
+                            errorElement.classList.add("active");
+                            spanErrorElement.textContent = "Chat password error";
+                
+                            setTimeout(() => {
+                                errorElement.classList.remove("active");
+                            }, 2500);
                         }
 
-                        setPrivateChat(clonePrivateChat);
 
-                        //
-
-
-
-                        socket.send(JSON.stringify({
-                            private_link_object: {
-                                data: responseData.lastRowInserted[0],
-                                userSetFirstName: userContext.firstname,
-                                userReceiveFirstName: selectUser.options[selectUser.selectedIndex].text,
-                                idLanguage: id
-                            },
-                            clonePrivateChat: (clonePrivateChat as any)[selectUser.value]
-
-                        }));
-
-                        chatArea.scrollTo({
-                            top: chatArea.scrollHeight,
-                            behavior: "smooth"
-                        });
-
-                        selectUser.classList.remove("active");
                     }
+
+
                 }
             }
         }
@@ -1200,9 +1763,12 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
+
+
+
     // RESET INPUT VALUES //
 
-    const handleResetInputValues = (e: React.MouseEvent) => {
+    const handleResetInputValues = (e: any) => {
 
         const inputValuesPassword = (document.getElementsByClassName("video--call--button--form--input") as HTMLCollectionOf<HTMLInputElement>);
 
@@ -1223,14 +1789,14 @@ export default function Language({ params }: { params: {language: string} }) {
 
     // CREATE LINK PRIVATE CHAT //
 
-    const createLinkPrivateChat = (wrap: HTMLElement, idLanguage: number, idPrivateChat: number) => {
+    const createLinkPrivateChat = (wrap: HTMLElement, idLanguage: number, idPrivateChat: number, idUserOne: number, idUserTwo: number) => {
 
         const divElement = document.createElement("div");
         divElement.setAttribute("class", "chat--message--wrap");
 
         const anchorElement = document.createElement("a");
         anchorElement.setAttribute("class", "link--private--chat");
-        anchorElement.setAttribute("href", `/chat?i=${idLanguage}&pv=${idPrivateChat}`);
+        anchorElement.setAttribute("href", `/chat?i=${idLanguage}&pv=${idPrivateChat}&us1=${idUserOne}&us2=${idUserTwo}`);
         anchorElement.setAttribute("target", "_blank");
         anchorElement.textContent = `Private chat invitation #${idPrivateChat}`;
 
@@ -1241,24 +1807,215 @@ export default function Language({ params }: { params: {language: string} }) {
 
         // create listener //
 
-        anchorElement.addEventListener("click", (e) => handleClickAnchorPrivateChat(e, /* id language */ Number(id), idPrivateChat));
+        anchorElement.addEventListener("click", (e) => handleClickAnchorPrivateChat(e, idPrivateChat, idUserOne, idUserTwo ));
     };
+
+
+
+
+
+
+
+    // CREATE LINK GENERAL CHAT //
+
+    const createLinkGeneralChat = (wrap: HTMLElement, idLanguage: number, idGeneralChat: number, userFirstName: string) => {
+
+        const divElement = document.createElement("div");
+        divElement.setAttribute("class", "chat--message--wrap");
+
+        const anchorElement = document.createElement("a");
+        anchorElement.setAttribute("class", "link--general--chat");
+        anchorElement.setAttribute("href", `/chat?i=${idLanguage}&gen=${idGeneralChat}`);
+        anchorElement.setAttribute("target", "_blank");
+        anchorElement.textContent = `General chat invitation #${idGeneralChat} by ${userFirstName}`;
+
+        divElement.append(anchorElement);
+
+        wrap.append(divElement);
+
+
+        // create listener //
+
+        anchorElement.addEventListener("click", (e) => handleClickAnchorGeneralChat(e, idGeneralChat));
+    };
+
+
+
+
+
 
 
     // HANDLE CLICK ANCHOR PRIVATE CHAT //
 
-    const handleClickAnchorPrivateChat = (e: any, idLanguage: number, idPrivateChat: number) => {
+    const handleClickAnchorPrivateChat = (e: any, idPrivateChat: number, idUserOne: number, idUserTwo: number) => {
 
-        console.log(e.currentTarget);
-        console.log(idLanguage);
-        console.log(idPrivateChat);
-        console.log(userContext);
-        document.cookie = `user=${JSON.stringify(userContext)}`;
+        e.preventDefault();
+
+        const videoCallBoxPrivate = (document.getElementsByClassName("video--call--button--box private--chat")[0] as HTMLDivElement);
+
+        const labelTitlePassword = (document.getElementsByClassName("video--call--button--form--label")[0] as HTMLLabelElement);
+
+        videoCallBoxPrivate.setAttribute("data-password", "enter");
+        videoCallBoxPrivate.setAttribute("data-id-pv-chat", idPrivateChat.toString());
+
+        if (userContext.id == idUserOne || userContext.id == idUserTwo) {
+
+            labelTitlePassword.textContent = `Enter the password to access private chat #${idPrivateChat}`;
+            videoCallBoxPrivate.classList.add("active");
+        }
     };
 
 
 
+    // HANDLE CLICK ANCHOR GENERAL CHAT //
 
+    const handleClickAnchorGeneralChat = async (e: any, idGeneralChat: number) => {
+
+        const errorElement = (document.getElementsByClassName("error--element")[0] as HTMLElement);
+        const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
+
+        e.preventDefault();
+
+        // check if empty seat //
+
+        
+
+        const response = await fetch(`${configContext.hostname}/api/userchatpassword/get/general/id/${idGeneralChat}`, {
+            method: "GET",
+            headers: {
+                "Content-type": "application/json",
+                "Authorization": `Bearer ${userContext.jwt}`
+            }
+        });
+
+        const responseData = await response.json();
+
+
+        // if token expired //
+
+        if (responseData.jwtCheck == false) {
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+            errorElement.classList.add("active");
+            spanErrorElement.textContent = "Session has expired, please sign in again";
+
+            setTimeout(() => {
+                errorElement.classList.remove("active");
+            }, 2500);
+        }
+
+
+        // else -> token ok //
+
+        else {
+
+
+            if (responseData.hasOwnProperty("data")) {
+
+
+                if (responseData.data.user_id == null || responseData.data.user_receive == null) {
+
+                    // update general chat row //
+
+                    const responseUpdate = await fetch(`${configContext.hostname}/api/userchatpassword/updateuser/${idGeneralChat}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-type": "application/json",
+                            "Authorization": `Bearer ${userContext.jwt}`
+                        },
+                        body: JSON.stringify({
+                            addUser: userContext.id
+                        })
+                    });
+
+                    const responseUpdateData = await responseUpdate.json();
+
+
+                    // check error no empty seat //
+
+                    
+                    if (responseUpdateData.hasOwnProperty("error")) {
+
+                        window.scrollTo({
+                            top: 0,
+                            behavior: "smooth"
+                        });
+            
+                        errorElement.classList.add("active");
+                        spanErrorElement.textContent = responseUpdateData.error;
+            
+                        setTimeout(() => {
+                            errorElement.classList.remove("active");
+                        }, 2500);
+                    }
+
+
+
+                    // open in new tab + set sessionStorage //
+
+                    else if (responseUpdateData.hasOwnProperty("alreadyRegistered")) {
+
+                        sessionStorage.setItem("user", JSON.stringify(userContext));
+
+                        setTimeout(() => {
+
+                            window.open(`/chat?i=${id}&gen=${responseData.data.id}`, "_blank");
+
+                        }, 300);
+                    }
+
+
+                    
+
+
+                    else {
+
+                        sessionStorage.setItem("user", JSON.stringify(userContext));
+
+                        setTimeout(() => {
+
+                            window.open(`/chat?i=${id}&gen=${responseData.data.id}`, "_blank");
+
+                        }, 300);
+                    }
+
+                    
+                }
+
+                else if ((responseData.data.user_id !== null && responseData.data.user_receive !== null) &&
+                         (responseData.data.user_id == userContext.id || responseData.data.user_receive == userContext.id)) {
+
+                    sessionStorage.setItem("user", JSON.stringify(userContext));
+
+                    setTimeout(() => {
+
+                        window.open(`/chat?i=${id}&gen=${responseData.data.id}`, "_blank");
+
+                    }, 300);
+                }
+
+                else if (responseData.data.user_id !== null && responseData.data.user_receive !== null) {
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: "smooth"
+                    });
+        
+                    errorElement.classList.add("active");
+                    spanErrorElement.textContent = "All seats are taken, please create another room";
+        
+                    setTimeout(() => {
+                        errorElement.classList.remove("active");
+                    }, 2500);
+                }
+
+            }
+        }
+    };
 
     // GO TO NEXT INPUT PASSWORD VIDEO CALL //
 
@@ -1288,7 +2045,11 @@ export default function Language({ params }: { params: {language: string} }) {
 
     // HANDLE CLICK VIDEO CALL //
 
-    const handleClickVideoCallButton = (chat: string, e?: any) => {
+    const handleClickVideoCallButton = async (chat: string, e?: any) => {
+
+
+        const errorElement = (document.getElementsByClassName("error--element")[0] as HTMLElement);
+        const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
 
         e?.preventDefault();
 
@@ -1297,9 +2058,22 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 if (chat == "private") {
 
+                    const event = new MouseEvent("click");
+
+                    handleResetInputValues(event);
+
                     const videoCallButtonBox = (document.getElementsByClassName("video--call--button--box private--chat")[0] as HTMLDivElement);
+
+                    const labelTitlePassword = (document.getElementsByClassName("video--call--button--form--label")[0] as HTMLLabelElement);
+
         
                     videoCallButtonBox.classList.toggle("active");
+
+
+                    // remove attribute to check if div SET or ENTER password //
+                    videoCallButtonBox.removeAttribute("data-password");
+                    videoCallButtonBox.removeAttribute("data-id-pv-chat");
+
 
 
                     const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
@@ -1307,11 +2081,93 @@ export default function Language({ params }: { params: {language: string} }) {
                     if (videoCallButtonBox.classList.contains("active")) {
 
                         selectUser.classList.add("active");
+
+                        labelTitlePassword.textContent = "Set a private chat password:";
                     }
 
                     else if (!videoCallButtonBox.classList.contains("active")) {
 
                         selectUser.classList.remove("active");
+
+                        setTimeout(() => {
+
+                            labelTitlePassword.textContent = "Set a private chat password:";
+                        }, 300);
+                    }
+                }
+        }
+
+
+
+        else if (e?.target.className == "video--call--img" ||
+                 e?.target.className == "video--call--button") {
+
+                if (chat == "general") {
+
+                    const response = await fetch (`${configContext.hostname}/api/userchatpassword/insert`, {
+                        method: "POST",
+                        headers: {
+                            "Content-type": "application/json",
+                            "Authorization": `Bearer ${userContext.jwt}`
+                        },
+                        body: JSON.stringify({
+                            passwordInputs: null,
+                            userSet: userContext.id,
+                            userReceive: null,
+                            languageId: Number(id),
+                            chatType: "general"
+                        })
+                    })
+
+                    const responseData = await response.json();
+
+                    
+                    if (responseData.hasOwnProperty("jwtCheck")) {
+
+                        
+
+
+                        // if token expired //
+
+                        if (responseData.jwtCheck == false) {
+
+                            window.scrollTo({
+                                top: 0,
+                                behavior: "smooth"
+                            });
+                
+                            errorElement.classList.add("active");
+                            spanErrorElement.textContent = "Session has expired, please sign in again";
+                
+                            setTimeout(() => {
+                                errorElement.classList.remove("active");
+                            }, 2500);
+                        }
+
+
+
+
+                        // else -> token ok //
+
+                        else {
+
+                            const generalChat = (document.getElementsByClassName("speak--language--chat")[0] as HTMLDivElement);
+
+                            createLinkGeneralChat(generalChat, Number(id), Number(responseData.lastRowInserted[0].id), userContext.firstname);
+
+                            socketContext.socket.send(JSON.stringify({
+                                general_link_object: {
+                                    idLanguage: Number(id),
+                                    idGeneralChat: Number(responseData.lastRowInserted[0].id),
+                                    userFirstName: userContext.firstname
+                                }
+                            }));
+
+                            generalChat.scrollTo({
+                                top: generalChat.scrollHeight,
+                                behavior: "smooth"
+                            });
+                        }
                     }
                 }
         }
@@ -1320,6 +2176,7 @@ export default function Language({ params }: { params: {language: string} }) {
     }
 
     // --------------------------- //
+
 
 
 
@@ -1336,22 +2193,51 @@ export default function Language({ params }: { params: {language: string} }) {
     // --------------------------- //
 
 
+    /****** */
+
+    const [onlineUsers, setOnlineUsers] = useState({
+        online_users: [userContext.id],
+        languageId: id
+    });
+
+    useEffect(() => {
+
+        let sendOnlineUsersInterval = setInterval(() => {
+
+            if (socketContext.socket.readyState == 1) {
+
+                socketContext.socket.send(JSON.stringify({
+                    online_users: onlineUsers
+                }));
+            }
+
+        }, 3000);
+
+        return () => clearInterval(sendOnlineUsersInterval);
+    });
 
 
-    
+    /****** */
 
-    // WEBSOCKET //
+
 
     useEffect(() => {
 
         let fetchUsersConnectedByLanguageInterval: any;
 
-        console.log(timerFetch);
-
         if (timerFetch) {
 
             fetchUsersConnectedByLanguageInterval = setInterval(() => {
-                fetchUsersConnectedByLanguage(id as string);
+
+                try {
+
+                    fetchUsersConnectedByLanguage(id as string);
+                }
+
+                catch (e) {
+
+                }
+
             }, 5000);
         }
 
@@ -1362,12 +2248,23 @@ export default function Language({ params }: { params: {language: string} }) {
         
         return () => clearInterval(fetchUsersConnectedByLanguageInterval);
         
-        
     }, [timerFetch]);
+
+
+
+
+
+
+
+
+
+    // WEBSOCKET //
 
     useEffect(() => {
 
-        socket.onopen = async (e) => {
+        
+
+        socketContext.socket.onopen = async (e) => {
 
             // INSERT USER_LANGUAGE_CONNECTED //
 
@@ -1378,13 +2275,32 @@ export default function Language({ params }: { params: {language: string} }) {
                 }
             });
         };
+    
+        
 
-        socket.onmessage = (e) => {
+        socketContext.socket.onmessage = (e) => {
 
             let objData = JSON.parse(e.data);
 
             const selectUser = (document.getElementsByClassName("private--chat--element--select--users")[0] as HTMLSelectElement);
             const chatArea = (document.getElementsByClassName("speak--language--chat--private--chat")[0] as HTMLElement);
+
+            if (objData.hasOwnProperty("online_users")) {
+
+                if (objData.online_users.languageId == id) {
+
+                    const cloneArrayUsersOnline = objData.online_users.online_users.slice();
+
+                    cloneArrayUsersOnline.push(userContext.id);
+
+
+                    const newDataOnlineUsers = Object.assign({}, {
+                        online_users: cloneArrayUsersOnline,
+                        languageId: id
+                    });
+
+                }
+            }
 
             if (objData.hasOwnProperty("message")) {
 
@@ -1404,8 +2320,37 @@ export default function Language({ params }: { params: {language: string} }) {
 
                         if (objData.message.private_user == userContext.id) {
 
-                            console.log(objData);
-                            console.log(privateChat);
+
+                            // add user id to mail array //
+
+                            const privateChatElement = (document.getElementsByClassName("private--chat--element--wrap--element private--chat")[0] as HTMLElement);
+
+                            if (!privateChatElement.classList.contains("active")) {
+
+                                let copyMailBoxId = mailBoxId.slice();
+                                copyMailBoxId.push(Number(objData.message.sending_user));
+                                setMailBoxId(copyMailBoxId);
+
+                                setCountMail(countMail + 1);
+                            }
+
+
+                            else if (privateChatElement.classList.contains("active")) {
+
+                                if (selectUser.value !== objData.message.sending_user) {
+
+                                    let copyMailBoxId = mailBoxId.slice();
+                                    copyMailBoxId.push(Number(objData.message.sending_user));
+                                    setMailBoxId(copyMailBoxId);
+    
+                                    setCountMail(countMail + 1);
+                                }
+                            }
+
+                            
+     
+
+
 
                             // set new message value in sending user property //
 
@@ -1418,12 +2363,12 @@ export default function Language({ params }: { params: {language: string} }) {
                                 }
                             );
 
-                            setPrivateChat(Object.assign(privateChat, newClonePrivateChat));
+                            //setPrivateChat(Object.assign(privateChat, newClonePrivateChat));
 
-                            console.log(privateChat);
-
+                            dataUserContext.privateChat = Object.assign(dataUserContext.privateChat, newClonePrivateChat);
+                            setPvChat(Object.assign(pvChat, newClonePrivateChat));
                             
-
+                            setCountChat(countChat + 1);
 
 
 
@@ -1458,8 +2403,6 @@ export default function Language({ params }: { params: {language: string} }) {
 
 
 
-                            console.log(selectUser.value);
-                            console.log(objData.message.sending_user);
 
                             
                             // if user has sending_user selected option -> empty all messages before update with new array of messages = live chat //
@@ -1483,6 +2426,37 @@ export default function Language({ params }: { params: {language: string} }) {
                 if (objData.private_link_object.data.user_receive == userContext.id) {
 
 
+
+                    // add user id to mail array //
+
+                    const privateChatElement = (document.getElementsByClassName("private--chat--element--wrap--element private--chat")[0] as HTMLElement);
+
+                    if (!privateChatElement.classList.contains("active")) {
+
+                        let copyMailBoxId = mailBoxId.slice();
+                        copyMailBoxId.push(Number(objData.private_link_object.data.user_owner_id));
+                        setMailBoxId(copyMailBoxId);
+
+                        setCountMail(countMail + 1);
+                    }
+
+
+                    else if (privateChatElement.classList.contains("active")) {
+
+                        if (Number(selectUser.value) !== Number(objData.private_link_object.data.user_owner_id)) {
+
+                            let copyMailBoxId = mailBoxId.slice();
+                            copyMailBoxId.push(Number(objData.private_link_object.data.user_owner_id));
+                            setMailBoxId(copyMailBoxId);
+
+                            setCountMail(countMail + 1);
+                        }
+                    }
+
+
+                    
+
+
                     // set new message link value in sending user property //
 
                     const newUserObjArrayMessage = {};
@@ -1494,9 +2468,12 @@ export default function Language({ params }: { params: {language: string} }) {
                         }
                     );
 
-                    setPrivateChat(Object.assign(privateChat, newClonePrivateChat));
+                    //setPrivateChat(Object.assign(privateChat, newClonePrivateChat));
 
+                    dataUserContext.privateChat = Object.assign(dataUserContext.privateChat, newClonePrivateChat);
+                    setPvChat(Object.assign(pvChat, newClonePrivateChat));
 
+                    setCountChat(countChat + 1);
 
 
                     // if option element of user not exists -> add //
@@ -1528,8 +2505,6 @@ export default function Language({ params }: { params: {language: string} }) {
                         chatArea.setAttribute("data-user_id", objData.private_link_object.data.user_id);
                     }
 
-                    //createLinkPrivateChat(chatArea, objData.private_link_object.data.idLanguage, objData.private_link_object.data.id);
-
 
 
 
@@ -1542,7 +2517,6 @@ export default function Language({ params }: { params: {language: string} }) {
 
                     //---//
 
-                    console.log(objData);
 
                     chatArea.scrollTo({
                         top: chatArea.scrollHeight,
@@ -1550,37 +2524,143 @@ export default function Language({ params }: { params: {language: string} }) {
                     });
                 }
             }
+
+            // if general chat link //
+
+            else if (objData.hasOwnProperty("general_link_object")) {
+
+                if (objData.general_link_object.idLanguage == id) {
+
+                    const generalChat = (document.getElementsByClassName("speak--language--chat")[0] as HTMLDivElement);
+
+                    createLinkGeneralChat(generalChat, objData.general_link_object.idLanguage, objData.general_link_object.idGeneralChat, objData.general_link_object.userFirstName);
+
+                    generalChat.scrollTo({
+                        top: generalChat.scrollHeight,
+                        behavior: "smooth"
+                    });
+                }
+            }
             
         };
 
-        socket.onclose = async (e) => {
+        socketContext.socket.onclose = async (e) => {
 
-            const response = await fetch(`${configContext.hostname}/api/user/${userContext.id}/language/${id}/connected/delete`, {
-                method: "DELETE",
-                headers: {
-                    "Content-type": "application/json"
+            try {
+
+                if (userContext.id !== null) {
+
+                    const response = await fetch(`${configContext.hostname}/api/user/${userContext.id}/language/${id}/connected/delete`, {
+                        method: "DELETE",
+                        headers: {
+                            "Content-type": "application/json"
+                        }
+                    })
                 }
-            })
+            }
+
+            catch (e) {
+
+            }
         }
 
-        socket.onerror = (e) => {
+        // socketContext.socket.onerror = (e) => {
 
-            console.log(e);
-        }
+        //     console.log(e);
+        // }
 
-        return () => {
+        // return () => {
 
-            socket.close();
-        }
+        //     //if (socketContext.socket.readyState == socketContext.socket.OPEN) {
+
+        //         socketContext.socket.close();
+        //     //}
+        // }
     });
 
 
 
 
 
-    if (userContext.id == null) {
+    // IF USER COME DIRECTLY FROM OUTSIDE APP -> ENTER URL LINK SPEAKIN DIRECTLY //
 
-        redirect("/");
+    useEffect(() => {
+
+        let idUser: string | null = null;
+
+        if (sessionStorage.getItem("user") !== null) {
+
+            idUser = JSON.parse(sessionStorage.getItem("user") as string)['id'];
+        }
+
+        // INSERT USER_LANGUAGE_CONNECTED //
+
+        const insertUserConnected = async () => {
+
+            if (idUser !== null) {
+
+                const response = await fetch(`${configContext.hostname}/api/user/${idUser}/language/${id}/connected`, {
+                    method: "POST",
+                    headers: {
+                        "Content-type": "application/json"
+                    }
+                })
+            }
+        }
+
+        setTimeout(() => {
+
+            insertUserConnected();
+        }, 2000);
+
+
+    }, []);
+
+
+
+
+    
+
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    if (isLoading) {
+
+        const errorElement = (document.getElementsByClassName("error--element")[0] as HTMLElement);
+        const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
+
+        setTimeout(() => {
+
+            if (sessionStorage.getItem("user") == null) {
+
+                if (errorElement !== undefined) {
+
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth"
+                });
+    
+                errorElement.classList.add("active");
+                spanErrorElement.textContent = "You must be logged to access this area";
+    
+                setTimeout(() => {
+                    errorElement.classList.remove("active");
+                }, 2500);
+
+                }
+
+                router.push("/");
+            }
+
+            else {
+
+                dataUserContext.setUser(JSON.parse(sessionStorage.getItem("user") as string));
+
+                setIsLoading(false);
+            }
+            
+        }, 1000);
+
+        return <Loader />
     }
 
 
@@ -1599,7 +2679,19 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 <h2 className="main--register--title">Chat</h2>
 
+                <div className="private--chat--users--online--wrap">
+                    
+
+                
                 <div className="private--chat--element" onClick={handleClickPrivateChat}>
+
+                    <Image
+                        className="private--chat--element--mail--img"
+                        alt="mail"
+                        src={mail}
+                        width={20}
+                        height={20}
+                    />
 
                     <span className="private--chat--element--span private--chat">Private chat</span>
                     <Image
@@ -1687,7 +2779,7 @@ export default function Language({ params }: { params: {language: string} }) {
 
                                 </button>
 
-                                <button type="submit" className="speak--language--chat--text--submit" name="speak--language--chat--text--submit" id="speak--language--chat--text--submit" onClick={(e) => handleSendMessage("private", e)}>
+                                <button type="submit" className="speak--language--chat--text--submit" name="speak--language--chat--text--submit" id="speak--language--chat--text--submit--private" onClick={(e) => handleSendMessage("private", e)}>
 
                                     <Image
                                         className="arrow speak--language--chat--text--submit private--chat"
@@ -1713,7 +2805,7 @@ export default function Language({ params }: { params: {language: string} }) {
 
                     <span className="speak--language--users--span">Users</span>
                     <Image
-                        className="arrow speak--language"
+                        className="arrow speak--language users"
                         alt="arrow"
                         src={arrowDown}
                         width={15}
@@ -1742,9 +2834,11 @@ export default function Language({ params }: { params: {language: string} }) {
 
                 </div>
 
+                </div>
+
                 <section className="speak--language--chat">
 
-                    {   Array.from(Array(6).keys()).map( (elem, ind) => 
+                    {   Array.from(Array(12).keys()).map( (elem, ind) => 
 
                         <div className="chat--message--wrap--fake" key={ind}>
                             <span className="chat--message--user">Lorem, ipsum.</span>
@@ -1782,4 +2876,5 @@ export default function Language({ params }: { params: {language: string} }) {
             </article>
         </main>
     )
+                    //}
 }

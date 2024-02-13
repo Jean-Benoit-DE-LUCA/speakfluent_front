@@ -2,13 +2,15 @@
 
 import Head from "../../components/Head/page";
 import Header from "../../components/Header/page";
+import Footer from "../../components/Footer/page";
 import Error from "../../components/Error/page";
-import { Dispatch, SetStateAction, createContext, useState } from "react";
+import { Dispatch, SetStateAction, createContext, useEffect, useState } from "react";
 
 // INTERFACE //
 
 export interface ConfigInterface {
   hostname: string;
+  lastActivity: string;
 }
 
 export interface UserInterface {
@@ -23,11 +25,14 @@ export interface UserInterface {
   password: string,
   gender: string,
   role_name: string,
-  jwt: string
+  jwt: string,
+  photo: string
 }
 
 export interface DataUserInterface {
-  setUser: Dispatch<SetStateAction<UserInterface>>
+  setUser: Dispatch<SetStateAction<UserInterface>>,
+  isJwtOk: boolean,
+  privateChat: Object
 }
 
 export interface SloganInterface {
@@ -39,7 +44,8 @@ export interface SloganInterface {
 // CREATE CONTEXT //
 
 export const ConfigContext = createContext<ConfigInterface>({
-  hostname: ""
+  hostname: "",
+  lastActivity: ""
 });
 
 export const UserContext = createContext<UserInterface>({
@@ -54,12 +60,26 @@ export const UserContext = createContext<UserInterface>({
   password: "",
   gender: "",
   role_name: "",
-  jwt: ""
+  jwt: "",
+  photo: ""
 });
 
 export const DataUserContext = createContext<DataUserInterface>({
-  setUser: () => {}
+  setUser: () => {},
+  isJwtOk: true,
+  privateChat: {}
 });
+
+
+
+export const SocketContext = createContext({
+  socket: new WebSocket("ws://localhost:8081")
+});
+
+
+
+
+
 
 // ROOT COMPONENT //
 
@@ -68,6 +88,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+
+  
+
+
 
   // STATE //
 
@@ -83,34 +107,38 @@ export default function RootLayout({
     password: "",
     gender: "",
     role_name: "",
-    jwt: ""
+    jwt: "",
+    photo: ""
   });
 
-  //
 
-  const configContextObject = {
-    hostname: "http://127.0.0.1:8000"
+
+
+  // WEBSOCKET INIT //
+
+  const [socket, setSocket] = useState(new WebSocket("ws://localhost:8081"));
+
+  const socketContextObject = {
+    socket: socket
   };
 
-  /*const userContextObject = {
-    id: null,
-    name: "",
-    firstname: "",
-    email: "",
-    birthdate: "",
-    address: "",
-    zip: null,
-    city: "",
-    password: "",
-    gender: "",
-    role_name: ""
-  };*/
+
+
+
+
+  //---/**/---//
+
+  const configContextObject = {
+    hostname: "http://127.0.0.1:8000",
+    lastActivity: '1970-01-01 00:00:00'
+  };
+
 
   const dataUserContextObject = {
-    setUser: setUser
+    setUser: setUser,
+    isJwtOk: true,
+    privateChat: {}
   }
-
-  console.log(user);
 
   return (
     <html lang="en">
@@ -119,11 +147,14 @@ export default function RootLayout({
         <ConfigContext.Provider value={configContextObject}>
           <UserContext.Provider value={user}>
             <DataUserContext.Provider value={dataUserContextObject}>
-              <Header />
-              <div className="container">
-                <Error />
-                {children}
-              </div>
+              <SocketContext.Provider value={socketContextObject}>
+                <Header />
+                <div className="container">
+                  <Error />
+                  {children}
+                </div>
+                <Footer />
+              </SocketContext.Provider>
             </DataUserContext.Provider>
           </UserContext.Provider>
         </ConfigContext.Provider>

@@ -1,16 +1,25 @@
 "use client";
 
+import Image from "next/image";
 import { useContext } from "react";
-import { ConfigContext } from "../layout";
+import { ConfigContext, DataUserContext } from "../layout";
+import { useRouter } from "next/navigation";
+
+import undefinedImg from "../../../public/assets/pictures/undefined-img.svg";
+import arrowDown from "../../../public/assets/pictures/arrow-down.svg";
 
 export default function Register() {
 
+    const router = useRouter();
+
     const configContext = useContext(ConfigContext);
+    const dataUserContext = useContext(DataUserContext);
 
     const handleSubmitRegister = async (e: React.FormEvent) => {
 
         e.preventDefault();
         
+        const photo = (document.getElementsByClassName("register--photo")[0] as HTMLInputElement);
         const name = (document.getElementsByClassName("register--name")[0] as HTMLInputElement);
         const firstname = (document.getElementsByClassName("register--firstname")[0] as HTMLInputElement);
         const email = (document.getElementsByClassName("register--email")[0] as HTMLInputElement);
@@ -26,7 +35,39 @@ export default function Register() {
         const spanErrorElement = (document.getElementsByClassName("error--element--span")[0] as HTMLSpanElement);
 
 
+
         if (
+            (name.value !== "" ||
+            firstname.value !== "" ||
+            email.value !== "" ||
+            birthdate.value !== "" ||
+            gender.value !== "" ||
+            address.value !== "" ||
+            zip.value !== "" ||
+            city.value !== "" ||
+            password.value !== "" ||
+            passwordConfirm.value !== "")
+
+            &&
+
+            (/[0-9]+/.test(zip.value) == false)
+        ) {
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+            errorElement.classList.add("active");
+            spanErrorElement.textContent = "Zip code must be composed of numbers only";
+
+            setTimeout(() => {
+                errorElement.classList.remove("active");
+            }, 2500);
+        }
+
+
+        else if (
             name.value == "" ||
             firstname.value == "" ||
             email.value == "" ||
@@ -52,6 +93,8 @@ export default function Register() {
             }, 2500);
         }
 
+
+
         else if (
             (name.value !== "" ||
             firstname.value !== "" ||
@@ -75,12 +118,15 @@ export default function Register() {
             });
 
             errorElement.classList.add("active");
-            spanErrorElement.textContent = "Passwords don't match, try again";
+            spanErrorElement.textContent = "Passwords don't match";
 
             setTimeout(() => {
                 errorElement.classList.remove("active");
             }, 2500);
         }
+
+
+
 
         else if (
             (name.value !== "" ||
@@ -96,34 +142,109 @@ export default function Register() {
 
             &&
 
+            (password.value.length < 6)
+        ) {
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+            errorElement.classList.add("active");
+            spanErrorElement.textContent = "Password must be at least 6 characters long";
+
+            setTimeout(() => {
+                errorElement.classList.remove("active");
+            }, 2500);
+        }
+
+
+
+
+
+        else if (
+            (name.value !== "" ||
+            firstname.value !== "" ||
+            email.value !== "" ||
+            birthdate.value !== "" ||
+            gender.value !== "" ||
+            address.value !== "" ||
+            zip.value !== "" ||
+            city.value !== "" ||
+            password.value !== "" ||
+            passwordConfirm.value !== "")
+
+            &&
+
+            (password.value.length >= 6)
+
+            &&
+
             (password.value == passwordConfirm.value)
 
         ) {
 
+            const formData = new FormData();
+
+            let photoData = null;
+
+            if (photo.value == "") {
+
+                photoData = null;
+            }
+
+            else if (photo.value !== "") {
+
+                photoData = (photo.files as any)[0];
+           }
+
+           formData.append("photo", photoData);
+           formData.append("name", name.value);
+           formData.append("firstname", firstname.value);
+           formData.append("email", email.value);
+           formData.append("birthdate", birthdate.value);
+           formData.append("gender", gender.value);
+           formData.append("address", address.value);
+           formData.append("zip", zip.value);
+           formData.append("city", city.value);
+           formData.append("password", password.value);
+
             const response = await fetch(`${configContext.hostname}/api/user/insert`, {
 
                 method: "POST",
-                /*headers: {
-                    "Content-type": "application/json"
-                },*/
-                body: JSON.stringify({
-                    name: name.value,
-                    firstname: firstname.value,
-                    email: email.value,
-                    birthdate: birthdate.value,
-                    gender: gender.value,
-                    address: address.value,
-                    zip: zip.value,
-                    city: city.value,
-                    password: password.value,
-                })
+
+                body: formData
             });
 
             const responseData = await response.json()
+
             
             if (responseData.hasOwnProperty('flag')) {
 
                 if (responseData.flag) {
+
+
+                    // login when registered//
+
+                    const responseSignIn = await fetch(`${configContext.hostname}/api/user/find`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                            email: email.value,
+                            password: password.value
+                        })
+                    })
+
+                    const responseSignInData = await responseSignIn.json();
+
+                    if (responseSignInData.hasOwnProperty('user')) {
+
+                        if (responseSignInData.user) {
+
+                            dataUserContext.setUser(responseSignInData.user);
+                            sessionStorage.setItem("user", JSON.stringify(responseSignInData.user));
+                            dataUserContext.isJwtOk = true;
+                        }
+                    }
 
                     window.scrollTo({
                         top: 0,
@@ -135,25 +256,92 @@ export default function Register() {
         
                     setTimeout(() => {
                         errorElement.classList.remove("active_success");
+                        router.push("/");
                     }, 2500);
                 }
 
                 else if (!responseData.flag) {
 
-                    window.scrollTo({
-                        top: 0,
-                        behavior: "smooth"
-                    });
+                    if (responseData.message !== null) {
+
+                        window.scrollTo({
+                            top: 0,
+                            behavior: "smooth"
+                        });
         
-                    errorElement.classList.add("active");
-                    spanErrorElement.textContent = "User already registered";
-        
-                    setTimeout(() => {
-                        errorElement.classList.remove("active");
-                    }, 2500);
+                        errorElement.classList.add("active");
+                        spanErrorElement.textContent = responseData.message;
+            
+                        setTimeout(() => {
+                            errorElement.classList.remove("active");
+                        }, 2500);
+                    }
+
+                    else {
+
+                        window.scrollTo({
+                            top: 0,
+                            behavior: "smooth"
+                        });
+            
+                        errorElement.classList.add("active");
+                        spanErrorElement.textContent = "User already registered";
+            
+                        setTimeout(() => {
+                            errorElement.classList.remove("active");
+                        }, 2500);
+                    }
                 }
-            } 
+            }
         }
+    };
+
+
+
+    // CHANGE PHOTO FILE //
+
+    const handleChangePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+        const imgPhoto = (document.getElementsByClassName("register--photo--img")[0] as HTMLImageElement);
+
+
+        if (e.target.files !== undefined) {
+
+            const reader = new FileReader();
+
+            reader.addEventListener("load", (e) => {
+
+                imgPhoto.src = e.target?.result as string;
+            });
+
+            if ((e.target?.files as any)[0] instanceof Blob) {
+
+                reader.readAsDataURL((e.target.files as any)[0]);
+
+                imgPhoto.classList.remove("undefined");
+            }
+        }
+        
+    };
+
+
+
+
+
+
+    // RESET PICTURE //
+
+    const handleClickCrossResetPicture = (e: React.MouseEvent<HTMLSpanElement>) => {
+
+        const inputFilePhoto = (document.getElementsByClassName("register--photo")[0] as HTMLInputElement);
+
+        const imgPhoto = (document.getElementsByClassName("register--photo--img")[0] as HTMLImageElement);
+
+        inputFilePhoto.value = "";
+
+        imgPhoto.src = "../../assets/pictures/undefined-img.svg";
+
+        imgPhoto.classList.add("undefined");
     };
 
     return (
@@ -169,7 +357,37 @@ export default function Register() {
 
                 <h2 className="main--register--title">Register</h2>
 
-                <form name="main--article--register--form" className="main--article--register--form" method="POST" onSubmit={handleSubmitRegister}>
+                <form name="main--article--register--form" className="main--article--register--form" method="POST" onSubmit={handleSubmitRegister} noValidate>
+
+                    <div className="main--article--register--form--field--wrap">
+                        <label htmlFor="register--photo" className="register--form--label">Photo:
+                        
+                            <span className="upload--span">
+                                <Image
+                                    className="upload--span--img"
+                                    alt="arrow"
+                                    src={arrowDown}
+                                    height={20}
+                                    width={20}
+                                    unoptimized
+                                />
+                            </span>
+                        </label>
+
+                        <span className="upload--span cross" onClick={handleClickCrossResetPicture}>
+                            X        
+                        </span>
+                        
+                        <input type="file" name="register--photo" className="register--photo" id="register--photo" onChange={handleChangePhoto}/>
+                        <Image
+                            className="register--photo--img undefined"
+                            alt="photo"
+                            src={undefinedImg}
+                            height={30}
+                            width={30}
+                            unoptimized
+                        />
+                    </div>
 
                     <div className="main--article--register--form--field--wrap">
                         <label htmlFor="register--name" className="register--form--label">Name:</label>
@@ -187,7 +405,7 @@ export default function Register() {
                     </div>
 
                     <div className="main--article--register--form--field--wrap">
-                        <label htmlFor="register--birthdate" className="register--form--label">Birthdate:</label>
+                        <label htmlFor="register--birthdate" className="register--form--label">Birthdate: (min: 15 years old)</label>
                         <input type="date" name="register--birthdate" className="register--birthdate" id="register--birthdate" />
                     </div>
 
@@ -215,13 +433,13 @@ export default function Register() {
                     </div>
                     
                     <div className="main--article--register--form--field--wrap">
-                        <label htmlFor="register--password" className="register--form--label">Password:</label>
-                        <input type="password" name="register--password" className="register--password" id="register--password" />
+                        <label htmlFor="register--password" className="register--form--label">Password: (min: 6 characters)</label>
+                        <input type="password" name="register--password" className="register--password" id="register--password" minLength={6} autoComplete="off"/>
                     </div>
 
                     <div className="main--article--register--form--field--wrap">
                         <label htmlFor="register--password--confirm" className="register--form--label">Confirm password:</label>
-                        <input type="password" name="register--password--confirm" className="register--password--confirm" id="register--password--confirm" />
+                        <input type="password" name="register--password--confirm" className="register--password--confirm" id="register--password--confirm" minLength={6} autoComplete="off"/>
                     </div>
 
                     <button type="submit" name="register--submit--button" className="register--submit--button" id="register--submit--button">Submit</button>
