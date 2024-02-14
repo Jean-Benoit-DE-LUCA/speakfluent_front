@@ -1839,7 +1839,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 .why--section--ul--li {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     transform: translateX(10rem);
     opacity: 0;
     transition: transform .8s, opacity 1.7s;
@@ -2895,7 +2895,7 @@ body::-webkit-scrollbar-thumb {
     }
 
     .why--section--p, .why--section--ul {
-        width: 60%;
+        width: 50rem;
         padding-top: 2rem;
     }
 }
@@ -2999,10 +2999,6 @@ body::-webkit-scrollbar-thumb {
 
     .main.main--home {
         height: 113rem;
-    }
-
-    .why--section--p, .why--section--ul {
-        width: 65%;
     }
 }
 
