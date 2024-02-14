@@ -2268,12 +2268,22 @@ export default function Language({ params }: { params: {language: string} }) {
 
             // INSERT USER_LANGUAGE_CONNECTED //
 
-            const response = await fetch(`${configContext.hostname}/api/user/${userContext.id}/language/${id}/connected`, {
-                method: "POST",
-                headers: {
-                    "Content-type": "application/json"
-                }
-            });
+            let idUser: string | null = null;
+
+            if (sessionStorage.getItem("user") !== null) {
+
+                idUser = JSON.parse(sessionStorage.getItem("user") as string)['id'];
+            }
+
+            if (idUser !== null) {
+
+                const response = await fetch(`${configContext.hostname}/api/user/${idUser}/language/${id}/connected`, {
+                    method: "POST",
+                    headers: {
+                        "Content-type": "application/json"
+                    }
+                });
+            }
         };
     
         
