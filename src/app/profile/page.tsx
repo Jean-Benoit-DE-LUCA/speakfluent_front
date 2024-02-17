@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useContext, useEffect, useState } from "react";
-import { ConfigContext, DataUserContext, UserContext, UserInterface } from "../layout";
+import { ConfigContext, DataUserContext, UserContext, UserInterface } from "../main";
 
 import undefinedImg from "../../../public/assets/pictures/undefined-img.svg";
 import arrowDown from "../../../public/assets/pictures/arrow-down.svg";

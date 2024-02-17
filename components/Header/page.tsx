@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfigContext, DataUserContext, UserContext } from "../../src/app/layout";
+import { ConfigContext, DataUserContext, UserContext } from "../../src/app/main";
 
 import Image from "next/image";
 import Link from "next/link";

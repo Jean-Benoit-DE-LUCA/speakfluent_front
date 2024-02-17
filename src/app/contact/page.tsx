@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext } from "react";
-import { ConfigContext } from "../layout";
+import { ConfigContext } from "../main";
 import { useRouter } from "next/navigation";
 
 export default function Contact() {

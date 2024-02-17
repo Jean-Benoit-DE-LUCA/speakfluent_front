@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ConfigContext } from "../layout";
+import { ConfigContext } from "../main";
 import { useContext } from "react";
 
 export default function SetNewPassword() {

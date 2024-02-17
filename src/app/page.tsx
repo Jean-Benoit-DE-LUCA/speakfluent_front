@@ -5,15 +5,13 @@ import Image from "next/image";
 
 import { useRouter } from 'next/navigation'
 import { useContext, useEffect, useState } from "react";
-import { ConfigContext, UserContext } from "./layout";
+import { ConfigContext, UserContext } from "./main";
 
 import talkIcon from "../../public/assets/pictures/icon-both-talk_.png";
 import padLock from "../../public/assets/pictures/padlock_.png";
 import heart from "../../public/assets/pictures/heart.svg";
 
 import arrowDown from "../../public/assets/pictures/arrow-down.svg";
-import arrowLeftBottom from "../../public/assets/pictures/arrow-left-bottom.svg";
-import arrowRightBottom from "../../public/assets/pictures/arrow-right-bottom.svg";
 
 export default function Home() {
 

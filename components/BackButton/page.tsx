@@ -5,7 +5,7 @@ import Image from "next/image";
 import leftArrow from "../../public/assets/pictures/left-arrow.svg";
 import { usePathname, useRouter } from "next/navigation";
 import { useContext, useEffect } from "react";
-import { ConfigContext, UserContext } from "../../src/app/layout";
+import { ConfigContext, UserContext } from "../../src/app/main";
 
 export default function BackButton() {
 

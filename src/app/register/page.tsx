@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useContext } from "react";
-import { ConfigContext, DataUserContext } from "../layout";
+import { ConfigContext, DataUserContext } from "../main";
 import { useRouter } from "next/navigation";
 
 import undefinedImg from "../../../public/assets/pictures/undefined-img.svg";

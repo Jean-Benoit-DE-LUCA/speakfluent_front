@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useState } from "react";
-import { ConfigContext, DataUserContext, UserContext, UserInterface } from "../../src/app/layout";
+import { ConfigContext, DataUserContext, UserContext, UserInterface } from "../../src/app/main";
 import { redirect, useRouter, usePathname } from "next/navigation";
 
 export default function Error() {

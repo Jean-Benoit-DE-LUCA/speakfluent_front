@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect, useState } from "react";
 import Image from "next/image";
-import { ConfigContext, DataUserContext, SloganInterface, SocketContext, UserContext } from "../../layout";
+import { ConfigContext, DataUserContext, SloganInterface, SocketContext, UserContext } from "../../main";
 
 import mail from "../../../../public/assets/pictures/mail.svg";
 import arrowDown from "../../../../public/assets/pictures/arrow-down.svg";

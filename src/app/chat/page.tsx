@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useSearchParams, redirect, useRouter, usePathname } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
-import { ConfigContext, DataUserContext, SocketContext, UserContext } from "../layout";
+import { ConfigContext, DataUserContext, SocketContext, UserContext } from "../main";
 
 import pickUp from "../../../public/assets/pictures/phone-call.svg";
 import hangUp from "../../../public/assets/pictures/phone-block.svg";
