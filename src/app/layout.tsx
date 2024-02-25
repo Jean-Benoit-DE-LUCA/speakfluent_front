@@ -1,8 +1,6 @@
 import Main from "./main";
 import Head from "../../components/Head/page";
 
-
-
 // ROOT COMPONENT //
 
 export default function RootLayout({
